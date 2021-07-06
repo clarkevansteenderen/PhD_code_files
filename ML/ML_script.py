@@ -37,6 +37,12 @@ TARGET_SIZE = (32,32)
 BATCH_SIZE = 32
 CLASS_MODE = 'categorical'
 
+""" 
+------------------------------------------------------------------
+SET UP THE TRAINING, VALIDATION, AND TESTING GENERATORS
+------------------------------------------------------------------
+"""
+
 train_generator = train_data_gen.flow_from_directory(directory=train_dir,
                                                   subset='training',
                                                   target_size=TARGET_SIZE,
@@ -63,6 +69,11 @@ test_generator = test_data_gen.flow_from_directory(directory=test_dir,
 
 print(train_generator.class_indices)
 
+""" 
+------------------------------------------------------------------
+SET UP THE MODEL
+------------------------------------------------------------------
+"""
 
 VGG16_MODEL = VGG16(
   weights="imagenet",
@@ -85,19 +96,29 @@ model.add(tf.keras.layers.Dense(len(label_list),activation='softmax'))
 
 model.summary()
 
+""" 
+------------------------------------------------------------------
+COMPILE THE MODEL
+------------------------------------------------------------------
+"""
+
 model.compile(loss=tf.keras.losses.categorical_crossentropy,
               optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
               metrics=['accuracy'])
 
-epoch_num = 50
-
 history = model.fit(train_generator,
-                    epochs=epoch_num,
+                    epochs=50,
                     validation_data=validation_generator,
                     validation_steps=2
                     )
 
 print(history.history.keys())
+
+""" 
+------------------------------------------------------------------
+PLOT THE ACCURACY AND LOSS FOR THE TRAINING AND VALIDATION DATA
+------------------------------------------------------------------
+"""
 
 # summarize history for accuracy
 plt.plot(history.history['accuracy'])
@@ -122,6 +143,12 @@ plt.show()
 results = model.evaluate(test_generator)
 print("test loss, test acc:", results)
 
+""" 
+------------------------------------------------------------------
+SEE HOW WELL THE MODEL PERFORMS ON THE TEST DATA 
+------------------------------------------------------------------
+"""
+
 test_generator.reset()
 predictions = model.predict(test_generator)
 probs = predictions.max(1)
@@ -132,6 +159,11 @@ predicted_classes = np.argmax(predictions, axis=1)
 
 cm = confusion_matrix(true_classes, predicted_classes)
 
+""" 
+------------------------------------------------------------------
+CONFUSION MATRIX
+------------------------------------------------------------------
+"""
 
 def plot_confusion_matrix(cm, classes,
                         normalize=False,
@@ -171,6 +203,29 @@ def plot_confusion_matrix(cm, classes,
 
 conf_mat = plot_confusion_matrix(cm, classes=label_list, title="Confusion Matrix", normalize=True)
 
+""" 
+------------------------------------------------------------------
+CONFUSION MATRIX ALTERNATIVE USING SEABORN
+------------------------------------------------------------------
+"""
+import seaborn as sns
+
+# Normalise
+cmn = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+fig, ax = plt.subplots(figsize=(10,10))
+sns.heatmap(cmn, annot=True, fmt='.2f', xticklabels=label_list, yticklabels=label_list, cmap="viridis")
+plt.ylabel('Actual')
+plt.xlabel('Predicted')
+plt.tight_layout()
+plt.savefig("./confusion_matrix_seaborn.png", dpi=350)
+plt.show()
+
+""" 
+------------------------------------------------------------------
+PRINT PREDICTIONS 
+------------------------------------------------------------------
+"""
+
 labels = (test_generator.class_indices)
 labels = dict((v,k) for k,v in labels.items())
 prediction_labels = [labels[k] for k in predicted_classes]
@@ -184,9 +239,9 @@ results=pd.DataFrame({"Filenames":filenames,
 # To force the whole dataframe to be printed to the screen
 with pd.option_context('display.max_rows', None, 'display.max_columns', None): print(results)
 
+  
 """
 Test one unseen image using the model
-
 
 # load and resize image to 200x200
 #test_image = image.load_img('C:/Users/s1000334/Documents/Python/ML/test_small/AFRICAN CROWNED CRANE/1.jpg', target_size=(32,32))
@@ -221,19 +276,3 @@ for filename in os.listdir(unseen_image_directory):
     #print(train_generator.class_indices)
 
 """
-
-
-""" 
-An alternative to make a confusion matrix plot using seaborn:
-"""
-import seaborn as sns
-
-# Normalise
-cmn = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-fig, ax = plt.subplots(figsize=(10,10))
-sns.heatmap(cmn, annot=True, fmt='.2f', xticklabels=label_list, yticklabels=label_list, cmap="viridis")
-plt.ylabel('Actual')
-plt.xlabel('Predicted')
-plt.tight_layout()
-plt.savefig("./confusion_matrix_seaborn.png", dpi=350)
-plt.show()
